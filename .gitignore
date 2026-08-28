@@ -68,6 +68,7 @@ data/processed/*
 # Allow empty data directories to remain in Git
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+!data/raw/essential_proteins.csv
 
 # Common large biological/network data formats
 *.gz
