@@ -67,6 +67,7 @@ data/processed/*
 
 # Allow empty data directories to remain in Git
 !data/raw/.gitkeep
+!data/raw/string_v12_0/.gitkeep
 !data/processed/.gitkeep
 !data/raw/essential_proteins.csv
 
