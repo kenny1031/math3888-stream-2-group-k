@@ -1,0 +1,27 @@
+{
+  "string_release": "12.0",
+  "taxon_id": 4932,
+  "primary_layer": "functional",
+  "sensitivity_layer": "physical",
+  "primary_score_threshold": 700,
+  "sensitivity_thresholds": [
+    400,
+    900
+  ],
+  "hlj1_string_id": "4932.YMR161W",
+  "core_seed_orfs": [
+    "YBR201W",
+    "YLR207W",
+    "YMR022W",
+    "YMR161W",
+    "YMR264W",
+    "YOL013C"
+  ],
+  "raw_file_sha256": {
+    "functional": "1362829d6685ad1c03e913204862ec369b86075eaba142294218f2f0c4b2fa36",
+    "physical": "0db5126a1fe8eb3e56cb574e946e0f66cc43d68c3fca62af7b9683c291230592",
+    "info": "ad69b4594f35cf6ffeb52afbfc3fe30d639bb76e0b883bc914dce8b2acb3e29c",
+    "aliases": "5991f48fb4cf5f1d34948010fc2a074962a0fd1751e7f9e60fb0b1809fe7dfa4"
+  },
+  "seed_table_sha256": "98131800b506b0ac35e9a78f63153c8c4a604e6fa81123b46532a3753676a4a5"
+}

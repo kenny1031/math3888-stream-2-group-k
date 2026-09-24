@@ -1,0 +1,7 @@
+orf,set,source_url,rationale
+YMR161W,core,https://www.kegg.jp/entry/sce:YMR161W,HLJ1; starting anchor for ERAD-related analysis
+YOL013C,core,https://www.kegg.jp/entry/sce04141,HRD1: ER-associated E3 ubiquitin ligase
+YLR207W,core,https://www.kegg.jp/entry/sce04141,HRD3: HRD ubiquitin-ligase complex subunit
+YBR201W,core,https://www.kegg.jp/entry/sce04141,DER1: derlin associated with ER protein degradation
+YMR022W,core,https://www.kegg.jp/entry/sce04141,UBC7: E2 ubiquitin-conjugating protein
+YMR264W,core,https://www.kegg.jp/entry/sce04141,CUE1: ERAD-associated component listed in sce04141
