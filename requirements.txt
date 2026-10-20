@@ -2,6 +2,8 @@
 numpy>=2.0,<3.0
 scipy>=1.14,<2.0
 pandas>=2.2,<3.0
+gensim>=4.3
+statsmodels>=0.14
 
 # Network analysis
 networkx>=3.3,<4.0
@@ -17,4 +19,7 @@ jupyterlab>=4.2,<5.0
 ipykernel>=6.29,<7.0
 
 # Utilities
+goatools>=1.4
 tqdm>=4.66,<5.0
+PyYAML>=6.0
+pytest>=8.0

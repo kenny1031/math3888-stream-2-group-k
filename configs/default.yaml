@@ -1,0 +1,218 @@
+
+# ============================================================
+# MATH3888 — HLJ1 Protein Network Analysis
+# Default Experiment Configuration
+# ============================================================
+
+project:
+  name: "MATH3888 HLJ1 Protein Network Analysis"
+  random_seed: 3888
+  target_protein: "4932.YMR161W"
+  target_gene: "HLJ1"
+
+# ------------------------------------------------------------
+# 1. Data paths
+# ------------------------------------------------------------
+
+paths:
+  functional_edges: "data/processed/string_v12_0/functional_edges_score_ge_400.csv.gz"
+  physical_edges: "data/processed/string_v12_0/physical_edges_score_ge_400.csv.gz"
+  protein_mapping: "data/processed/string_v12_0/string_id_to_orf.csv"
+  essential_proteins: "data/raw/essential_proteins.csv"
+  erad_seeds: "data/metadata/erad_seeds.csv"
+
+  go_annotations: "data/raw/go/YEAST-mod.gaf.gz"
+  go_ontology: "data/raw/go/go-basic.obo"
+
+  models: "outputs/models"
+  rankings: "outputs/rankings"
+  evaluation: "outputs/evaluation"
+  figures: "outputs/figures"
+
+  baseline_features: "outputs/notebook_02/protein_baseline_features_functional_700.csv"
+  node2vec_consensus: "outputs/notebook_04/node2vec_consensus_unbiased.csv"
+
+# ------------------------------------------------------------
+# 2. Network construction
+# ------------------------------------------------------------
+
+network:
+  string_version: "12.0"
+
+  confidence_threshold: 700
+  confidence_divisor: 1000.0
+  weight_attribute: "confidence"
+
+  directed: false
+  analysis_component: "target_connected_component"
+
+  # Node2Vec and RWR use the HLJ1 component.
+  # Louvain uses the full functional graph.
+  community_graph: "full_functional"
+
+# ------------------------------------------------------------
+# 3. Candidate eligibility
+# ------------------------------------------------------------
+
+candidates:
+  exclude_essential: true
+  require_orf: true
+  exclude_target: true
+
+  excluded_reference_proteins:
+    - "4932.YOL013C"  # HRD1
+    - "4932.YBR201W"  # DER1
+    - "4932.YLR207W"  # HRD3
+    - "4932.YMR022W"  # UBC7
+    - "4932.YMR264W"  # CUE1
+
+  excluded_readout_proteins:
+    - "4932.YNL064C"  # YDJ1
+    - "4932.YJL034W"  # KAR2
+
+# ------------------------------------------------------------
+# 4. Node2Vec
+# ------------------------------------------------------------
+
+node2vec:
+  dimensions: 64
+
+  walk_length: 40
+  walks_per_node: 5
+
+  p: 1.0
+  q: 1.0
+
+  window_size: 5
+  negative_samples: 5
+  epochs: 5
+
+  use_edge_weights: true
+  training_seeds: [3888, 3889, 3890]
+
+  similarity: "cosine"
+  consensus_method: "mean_rank"
+
+# ------------------------------------------------------------
+# 5. Random Walk with Restart
+# ------------------------------------------------------------
+
+rwr:
+  alpha: 0.85
+  personalization: "target"
+  weight: "confidence"
+
+# ------------------------------------------------------------
+# 6. Louvain community detection
+# ------------------------------------------------------------
+
+louvain:
+  resolution: 1.0
+  weight: "confidence"
+
+  training_seeds:
+    - 3888
+    - 3889
+    - 3890
+    - 3891
+    - 3892
+    - 3893
+    - 3894
+    - 3895
+    - 3896
+    - 3897
+
+  validation_seeds:
+    - 3898
+    - 3899
+    - 3900
+    - 3901
+    - 3902
+    - 3903
+    - 3904
+    - 3905
+    - 3906
+    - 3907
+
+# ------------------------------------------------------------
+# 7. CADTP — Our proposed algorithm
+# ------------------------------------------------------------
+
+cadtp:
+  local_threshold: 0.8
+  cross_threshold: 0.2
+
+  affinity_smoothing: 5.0
+
+  community_affinity: "mean_raw_then_percentile"
+  score_normalization: "rank_percentile"
+
+  local_weights:
+    node2vec: 1.0
+    rwr: 1.0
+    community: 1.0
+
+  cross_weights:
+    node2vec: 1.0
+    rwr: 1.0
+
+  boundary_weights:
+    node2vec: 1.0
+    rwr: 1.0
+
+  rank_within_track: true
+
+# ------------------------------------------------------------
+# 8. Evaluation
+# ------------------------------------------------------------
+
+evaluation:
+  top_k: [10, 20, 50, 100]
+
+  stability:
+    metric: "jaccard"
+
+  go:
+    aspect: "P"
+    exclude_evidence: ["IEA", "ND"]
+    exclude_not_annotations: true
+    ontology_relations: ["is_a"]
+
+    categories:
+      protein_folding: "GO:0006457"
+      erad: "GO:0036503"
+      er_stress: "GO:0034976"
+      unfolded_protein_response: "GO:0006986"
+
+  matched_randomisation:
+    n_permutations: 2000
+    random_seed: 3888
+
+    degree_bins: [5, 20, 60]
+    max_distance_bin: 4
+
+    match_features:
+      - "degree"
+      - "distance"
+      - "track"
+
+  multiple_testing:
+    method: "fdr_bh"
+    alpha: 0.05
+
+# ------------------------------------------------------------
+# 9. Visualisation
+# ------------------------------------------------------------
+
+visualisation:
+  dpi: 300
+  formats: ["png", "pdf"]
+
+  network:
+    layout: "spring"
+    seed: 3888
+    show_edge_weights: false
+
+  heatmap:
+    show_gene_names: true
+    show_consensus_track: true
