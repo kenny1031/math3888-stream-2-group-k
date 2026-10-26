@@ -140,9 +140,7 @@ def strongest_shortest_path(
         return [source]
 
     if not nx.has_path(graph, source, target):
-        raise nx.NetworkXNoPath(
-            f"No path from {source} to {target}"
-        )
+        raise nx.NetworkXNoPath(f"No path from {source} to {target}")
 
     paths = nx.all_shortest_paths(
         graph,
@@ -209,32 +207,23 @@ def plot_candidate_network(
 
     def gene_name(node):
         name = protein_names.get(node)
-
         if name is None or pd.isna(name):
             return node.split(".")[-1]
 
         return str(name)
 
     for candidate in candidate_ids:
-
         path = strongest_shortest_path(
             graph,
             source=target_id,
             target=candidate,
             weight=weight,
         )
-
         confidences = []
 
         for u, v in zip(path[:-1], path[1:]):
-
-            selected_graph.add_edge(
-                u, v, **graph[u][v]
-            )
-
-            confidences.append(
-                float(graph[u][v][weight])
-            )
+            selected_graph.add_edge(u, v, **graph[u][v])
+            confidences.append(float(graph[u][v][weight]))
 
         evidence_records.append({
             "candidate_id": candidate,
@@ -255,11 +244,8 @@ def plot_candidate_network(
     # --------------------------------------------------------
 
     candidate_set = set(candidate_ids)
-
     roles = {}
-
     for node in selected_graph.nodes():
-
         if node == target_id:
             roles[node] = "HLJ1"
         elif node in candidate_set:
@@ -356,7 +342,6 @@ def plot_candidate_network(
     legend_handles = []
 
     for role in ("HLJ1", "Candidate", "Intermediate"):
-
         legend_handles.append(
             Line2D(
                 [0], [0],
@@ -407,17 +392,9 @@ def plot_candidate_network(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     saved_paths = []
-
     for extension in ("png", "pdf"):
-
         path = output_dir / f"{file_stem}.{extension}"
-
-        fig.savefig(
-            path,
-            dpi=300,
-            bbox_inches="tight",
-        )
-
+        fig.savefig(path, dpi=300, bbox_inches="tight")
         saved_paths.append(path)
 
     plt.close(fig)
@@ -472,9 +449,7 @@ def plot_louvain_membership_heatmap(
     if not set(all_seeds).issubset(membership.columns):
         raise ValueError("Missing Louvain seeds.")
 
-    data = membership.loc[
-        protein_ids, all_seeds
-    ].astype(int)
+    data = membership.loc[protein_ids, all_seeds].astype(int)
 
     if not data.isin([0, 1]).all().all():
         raise ValueError("Membership values must be binary.")
@@ -514,7 +489,6 @@ def plot_louvain_membership_heatmap(
     height = max(5.5, len(protein_ids) * 0.52 + 1.5)
 
     fig, ax = plt.subplots(figsize=(14, height))
-
     ax.imshow(
         data.to_numpy(),
         cmap=cmap,
@@ -529,7 +503,6 @@ def plot_louvain_membership_heatmap(
     # --------------------------------------------------------
 
     row_labels = []
-
     for row in summary.itertuples(index=False):
         row_labels.append(
             f"{row.gene} | {row.training_track}"
@@ -540,7 +513,6 @@ def plot_louvain_membership_heatmap(
     ax.set_yticks(np.arange(len(protein_ids)))
     ax.set_yticklabels(row_labels, fontsize=10)
     ax.set_xticks(np.arange(len(all_seeds)))
-
     ax.set_xticklabels(
         [str(s) for s in all_seeds],
         rotation=45,
@@ -552,51 +524,22 @@ def plot_louvain_membership_heatmap(
     # D. Cell borders and ensemble separator
     # --------------------------------------------------------
 
-    ax.set_xticks(
-        np.arange(-0.5, len(all_seeds), 1),
-        minor=True,
-    )
-
-    ax.set_yticks(
-        np.arange(-0.5, len(protein_ids), 1),
-        minor=True,
-    )
-
-    ax.grid(
-        which="minor",
-        color="white",
-        linewidth=0.8,
-    )
-
-    ax.tick_params(
-        which="minor",
-        bottom=False,
-        left=False,
-    )
+    ax.set_xticks(np.arange(-0.5, len(all_seeds), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(protein_ids), 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=0.8)
+    ax.tick_params(which="minor", bottom=False, left=False)
 
     # Separate training and validation ensembles.
     separator = len(train_seeds) - 0.5
-
-    ax.axvline(
-        separator,
-        color="#111827",
-        linewidth=2.5,
-    )
+    ax.axvline(separator, color="#111827", linewidth=2.5)
 
     # --------------------------------------------------------
     # E. Group labels and legend
     # --------------------------------------------------------
 
     total_runs = len(all_seeds)
-
-    train_centre = (
-        len(train_seeds) / 2 / total_runs
-    )
-
-    val_centre = (
-        len(train_seeds)
-        + len(val_seeds) / 2
-    ) / total_runs
+    train_centre = len(train_seeds) / 2 / total_runs
+    val_centre = (len(train_seeds) + len(val_seeds) / 2) / total_runs
 
     ax.text(
         train_centre, 1.035,
@@ -667,15 +610,8 @@ def plot_louvain_membership_heatmap(
     saved_paths = []
 
     for extension in ("png", "pdf"):
-
         path = output_dir / f"{file_stem}.{extension}"
-
-        fig.savefig(
-            path,
-            dpi=300,
-            bbox_inches="tight",
-        )
-
+        fig.savefig(path, dpi=300, bbox_inches="tight")
         saved_paths.append(path)
 
     plt.close(fig)

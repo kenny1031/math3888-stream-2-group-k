@@ -9,6 +9,7 @@ No downloads or ranking algorithms are performed here.
 """
 import hashlib
 from pathlib import Path
+from goatools.obo_parser import GODag
 import pandas as pd
 
 
@@ -145,8 +146,6 @@ def build_go_labels(
     Missing annotations are encoded as False.
     Annotation coverage is recorded separately.
     """
-    from goatools.obo_parser import GODag
-
     obo_path = Path(obo_path)
 
     if not obo_path.is_file():

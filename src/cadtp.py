@@ -42,14 +42,15 @@ def _as_bool(series: pd.Series) -> pd.Series:
     parsed = values.map(mapping)
 
     if parsed.isna().any():
-        raise ValueError(
-            f"Invalid or missing boolean values in {series.name}"
-        )
+        raise ValueError(f"Invalid or missing boolean values in {series.name}")
 
     return parsed.astype(bool)
 
 
-def _weighted_average(data: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
+def _weighted_average(
+    data: pd.DataFrame,
+    weights: dict[str, float]
+) -> pd.Series:
     """Calculate a weighted average of CADTP components."""
 
     columns = {
@@ -96,13 +97,9 @@ class CADTPRanker:
         all_scores  : scores for all non-target proteins
         rankings    : eligible candidates ranked within tracks
     """
-
     def __init__(self, cfg: ExperimentConfig):
-
         self.cfg = cfg
-
         self.target = cfg.project["target_protein"]
-
         self.communities = None
         self.all_scores = None
         self.rankings = None
@@ -110,7 +107,6 @@ class CADTPRanker:
     # --------------------------------------------------------
     # 3. Candidate eligibility
     # --------------------------------------------------------
-
     def _candidate_mask(self, baseline: pd.DataFrame) -> pd.Series:
         """
         Reproduce the original candidate screening rules.
@@ -118,13 +114,8 @@ class CADTPRanker:
         Exclusion affects ranking eligibility only.
         Excluded proteins remain in the network.
         """
-
-        mask = _as_bool(
-            baseline["candidate_eligible"]
-        )
-
+        mask = _as_bool(baseline["candidate_eligible"])
         settings = self.cfg.candidates
-
         if settings["require_orf"]:
             valid_orf = (
                 baseline["orf"].notna()
@@ -134,10 +125,7 @@ class CADTPRanker:
             mask &= valid_orf.astype(bool)
 
         if settings["exclude_essential"]:
-            essential = _as_bool(
-                baseline["is_listed_essential"]
-            )
-
+            essential = _as_bool(baseline["is_listed_essential"])
             mask &= ~essential
 
         excluded_ids = set(
@@ -190,14 +178,11 @@ class CADTPRanker:
         pd.DataFrame:
             Eligible candidates with track-specific ranking.
         """
-
         if self.target not in G_full or self.target not in G_hlj1:
             raise ValueError("HLJ1 is missing from the graphs.")
 
         if not set(G_hlj1.nodes()).issubset(G_full.nodes()):
-            raise ValueError(
-                "Target component is not contained in the full graph."
-            )
+            raise ValueError("Target component is not contained in the full graph.")
 
         if not node2vec.index.is_unique:
             raise ValueError("Duplicate Node2Vec protein IDs.")
@@ -209,15 +194,8 @@ class CADTPRanker:
             raise ValueError("Node2Vec data requires column N.")
 
         # Consistent score universe: all non-HLJ1 nodes
-        nodes = sorted(
-            v for v in G_hlj1.nodes()
-            if v != self.target
-        )
-
-        node_index = pd.Index(
-            nodes,
-            name="string_id",
-        )
+        nodes = sorted(v for v in G_hlj1.nodes() if v != self.target)
+        node_index = pd.Index(nodes, name="string_id")
 
         if not node_index.isin(node2vec.index).all():
             raise ValueError("Missing Node2Vec scores.")
@@ -247,9 +225,7 @@ class CADTPRanker:
             weight=self.cfg.rwr["weight"],
         )
 
-        R = rank_percentile(
-            rwr_raw.drop(index=self.target)
-        ).reindex(node_index)
+        R = rank_percentile(rwr_raw.drop(index=self.target)).reindex(node_index)
 
         # ----------------------------------------------------
         # C. Louvain ensemble
@@ -308,31 +284,18 @@ class CADTPRanker:
 
         # Exact integer cutoffs avoid floating-point
         # errors at the Local/Cross boundaries.
-        local_threshold = Fraction(
-            str(self.cfg.cadtp["local_threshold"])
-        )
+        local_threshold = Fraction(str(self.cfg.cadtp["local_threshold"]))
+        cross_threshold = Fraction(str(self.cfg.cadtp["cross_threshold"]))
 
-        cross_threshold = Fraction(
-            str(self.cfg.cadtp["cross_threshold"])
-        )
-
-        min_local_votes = math.ceil(
-            local_threshold * n_runs
-        )
-
-        max_cross_votes = math.floor(
-            cross_threshold * n_runs
-        )
+        min_local_votes = math.ceil(local_threshold * n_runs)
+        max_cross_votes = math.floor(cross_threshold * n_runs)
 
         scores["track"] = np.select(
             [
                 votes >= min_local_votes,
                 votes <= max_cross_votes,
             ],
-            [
-                "Local",
-                "Cross",
-            ],
+            ["Local", "Cross"],
             default="Boundary",
         )
 
@@ -360,10 +323,7 @@ class CADTPRanker:
                 scores["track"].eq("Local"),
                 scores["track"].eq("Cross"),
             ],
-            [
-                local_score,
-                cross_score,
-            ],
+            [local_score, cross_score],
             default=boundary_score,
         )
 
@@ -386,34 +346,25 @@ class CADTPRanker:
             if col in baseline.columns
         ]
 
-        scores = scores.join(
-            baseline[metadata_columns]
-        )
-
+        scores = scores.join(baseline[metadata_columns])
         self.all_scores = scores
 
-        eligible = scores.loc[
-            scores["eligible"]
-        ].copy()
+        eligible = scores.loc[scores["eligible"]].copy()
 
         # ----------------------------------------------------
         # H. Independent rankings within each track
         # ----------------------------------------------------
 
         eligible = eligible.reset_index()
-
         eligible = eligible.sort_values(
             ["track", "cadtp_score", "string_id"],
             ascending=[True, False, True],
             kind="mergesort",
         )
-
         eligible["rank_within_track"] = (
             eligible.groupby("track").cumcount() + 1
         )
-
         eligible = eligible.set_index("string_id")
-
         eligible.index.name = "string_id"
 
         self.rankings = eligible

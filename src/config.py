@@ -40,10 +40,7 @@ class ExperimentConfig:
         """Create output directories if necessary."""
 
         for name in OUTPUT_KEYS:
-            self.path(name).mkdir(
-                parents=True,
-                exist_ok=True,
-            )
+            self.path(name).mkdir(parents=True, exist_ok=True)
 
     def check_inputs(self, *names: str) -> None:
         """Check that specified input files exist."""
@@ -55,10 +52,7 @@ class ExperimentConfig:
         ]
 
         if missing:
-            raise FileNotFoundError(
-                "Missing input files:\n"
-                + "\n".join(missing)
-            )
+            raise FileNotFoundError("Missing input files:\n" + "\n".join(missing))
 
 
 def validate_config(cfg: ExperimentConfig) -> None:
@@ -196,9 +190,7 @@ def load_config(
 
     for section in sections:
         if section not in data or not isinstance(data[section], dict):
-            raise ValueError(
-                f"Missing or invalid section: {section}"
-            )
+            raise ValueError(f"Missing or invalid section: {section}")
 
     # Resolve relative paths against repository root
     resolved_paths = {}

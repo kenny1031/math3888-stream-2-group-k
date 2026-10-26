@@ -1,5 +1,5 @@
 """
-Weighted Node2Vec implementation for MATH3888.
+Weighted Node2Vec implementation.
 Features:
     - Second-order biased random walks
     - STRING confidence-weighted transitions
@@ -15,14 +15,12 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-
 from .algorithms import rank_percentile
 
 
 # ============================================================
 # 1. Node2Vec trainer
 # ============================================================
-
 class Node2VecTrainer:
     def __init__(
         self,
@@ -165,11 +163,7 @@ class Node2VecTrainer:
         bias = np.array([
             1.0 / self.p
             if x == previous
-            else (
-                1.0
-                if x in previous_neighbors
-                else 1.0 / self.q
-            )
+            else (1.0 if x in previous_neighbors else 1.0 / self.q)
             for x in neighbors
         ], dtype=float)
 
@@ -254,11 +248,7 @@ class Node2VecTrainer:
             raise RuntimeError("Node2Vec model has not been trained.")
 
         vectors = np.vstack([self.model.wv[v] for v in self.nodes])
-
-        return pd.DataFrame(
-            vectors,
-            index=pd.Index(self.nodes, name="string_id"),
-        )
+        return pd.DataFrame(vectors, index=pd.Index(self.nodes, name="string_id"))
 
     # --------------------------------------------------------
     # 8. Cosine similarity to target
@@ -284,9 +274,7 @@ class Node2VecTrainer:
                 "for zero-length embeddings."
             )
 
-        scores = (
-            vectors @ target_vector
-        ) / denominator
+        scores = vectors @ target_vector / denominator
 
         return pd.Series(
             scores,
@@ -316,7 +304,6 @@ class Node2VecTrainer:
         config: dict[str, Any],
         seed: int,
     ):
-
         return cls(
             dimensions=config["dimensions"],
             walk_length=config["walk_length"],

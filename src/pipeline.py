@@ -47,7 +47,6 @@ VALIDATION_COUNTS = {
 # ============================================================
 # Save Louvain membership for reproducible visualisation
 # ============================================================
-
 def save_louvain_membership(
     cfg: ExperimentConfig,
     graph: nx.Graph,
@@ -60,17 +59,14 @@ def save_louvain_membership(
     group:
         "training" or "validation"
     """
-
     if group not in ("training", "validation"):
         raise ValueError(f"Unknown group: {group}")
 
     target = cfg.project["target_protein"]
-
     nodes = [target] + sorted(
         node for node in graph.nodes()
         if node != target
     )
-
     membership = community_membership_matrix(
         communities,
         nodes=nodes,
@@ -83,15 +79,8 @@ def save_louvain_membership(
         / f"louvain_membership_{group}_{threshold}.csv.gz"
     )
 
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    membership.to_csv(
-        output_path,
-        compression="gzip",
-    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    membership.to_csv(output_path, compression="gzip")
 
     print(f"Louvain membership cached: {output_path}")
 
@@ -101,7 +90,6 @@ def save_louvain_membership(
 # ============================================================
 
 def prepare_networks(cfg: ExperimentConfig):
-
     cfg.check_inputs(
         "functional_edges",
         "physical_edges",
@@ -181,9 +169,7 @@ def load_cadtp_inputs(cfg: ExperimentConfig):
     )
 
     if essential_df.shape[1] < 2:
-        raise ValueError(
-            "Essential protein CSV requires at least two columns."
-        )
+        raise ValueError("Essential protein CSV requires at least two columns.")
 
     essential_orfs = set(
         essential_df.iloc[:, 1]
@@ -399,11 +385,9 @@ def run_validation(
         fill_value=0,
     )
 
-    expected_matrix = np.array([
-        [95,    0,  25],
-        [0,  3773, 212],
-        [2,    34, 298],
-    ])
+    expected_matrix = np.array([[95, 0,   25],
+                                [0, 3773, 212],
+                                [2, 34,   298]])
 
     np.testing.assert_array_equal(
         confusion.to_numpy(),
@@ -420,15 +404,8 @@ def run_validation(
     records = []
 
     for track in TRACKS:
-
-        train_pool = set(
-            train.index[train["track"].eq(track)]
-        )
-
-        valid_pool = set(
-            valid.index[valid["track"].eq(track)]
-        )
-
+        train_pool = set(train.index[train["track"].eq(track)])
+        valid_pool = set(valid.index[valid["track"].eq(track)])
         records.append({
             "track": track,
             "metric": "pool",
@@ -438,12 +415,9 @@ def run_validation(
             "overlap": len(train_pool & valid_pool),
             "jaccard": jaccard(train_pool, valid_pool),
         })
-
         for k in [10, 20, 50]:
-
             a = top_k_ids(train, track, k)
             b = top_k_ids(valid, track, k)
-
             records.append({
                 "track": track,
                 "metric": "top_k",
@@ -471,10 +445,8 @@ def run_validation(
     }
 
     for track, expected in expected_top20.items():
-
         a = top_k_ids(train, track, 20)
         b = top_k_ids(valid, track, 20)
-
         assert len(a & b) == expected
 
     # --------------------------------------------------------
@@ -549,11 +521,7 @@ def run_evaluation(cfg: ExperimentConfig):
 
     assert labels.index.is_unique
 
-    required_labels = [
-        "has_BP_annotation",
-        "proteostasis_any",
-    ]
-
+    required_labels = ["has_BP_annotation", "proteostasis_any"]
     for column in required_labels:
         if column not in labels.columns:
             raise ValueError(f"Missing GO label column: {column}")
@@ -574,7 +542,6 @@ def run_evaluation(cfg: ExperimentConfig):
     )
 
     missing = ~protein_orfs.isin(labels.index)
-
     if missing.any():
         raise ValueError(
             f"{missing.sum()} candidate ORFs "
@@ -832,7 +799,6 @@ def run_plotting(
     }
 
     for track, settings in networks.items():
-
         candidate_ids = [
             protein_id(gene)
             for gene in settings["genes"]
@@ -886,15 +852,11 @@ def run_plotting(
     )
 
     def read_membership(path):
-        matrix = pd.read_csv(
-            path,
-            index_col="string_id",
-        )
+        matrix = pd.read_csv(path, index_col="string_id")
         matrix.columns = matrix.columns.astype(int)
         return matrix
 
     if train_cache.is_file() and val_cache.is_file():
-
         training = read_membership(train_cache)
         validation = read_membership(val_cache)
 
@@ -906,17 +868,11 @@ def run_plotting(
 
         validation = validation.reindex(training.index)
 
-        membership = pd.concat(
-            [training, validation],
-            axis=1,
-        )
+        membership = pd.concat([training, validation], axis=1)
 
     elif combined_cache.is_file():
-
         membership = read_membership(combined_cache)
-
     else:
-
         raise FileNotFoundError(
             "Louvain membership cache not found. "
             "Run --stage all, or generate the "
@@ -1026,8 +982,11 @@ def main():
         default="all",
         help="Pipeline stage to execute."
     )
-    parser.add_argument("--config", default="configs/default.yaml",
-                        help="Path to experiment configuration.")
+    parser.add_argument(
+        "--config",
+        default="configs/default.yaml",
+        help="Path to experiment configuration."
+    )
 
     args = parser.parse_args()
 

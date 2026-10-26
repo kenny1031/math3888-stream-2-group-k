@@ -224,9 +224,7 @@ def _affinity_from_workspace(
 
     # Community's share of the graph's weighted volume
     community_prior = np.dot(strength, member) / total_volume
-
     denominator = strength + smoothing
-
     if np.any(denominator <= 0):
         raise ValueError(
             "Affinity denominator is zero. "
@@ -291,7 +289,6 @@ def mean_community_affinity(
 
     The sparse adjacency matrix is constructed once.
     """
-
     if not communities:
         raise ValueError("No Louvain communities supplied.")
 

@@ -23,7 +23,6 @@ def jaccard_similarity(
     b: Iterable[str],
 ) -> float:
     """Jaccard similarity between two sets."""
-
     A = set(a)
     B = set(b)
 

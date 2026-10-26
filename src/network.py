@@ -227,7 +227,6 @@ def compute_network_features(
         weighted_degree : Sum of edge confidence weights
         h_hops          : Hop distance from target
     """
-
     if target_id not in graph:
         raise ValueError("Target protein not found in graph.")
 
@@ -276,9 +275,7 @@ def build_networks(cfg: ExperimentConfig) -> tuple[nx.Graph,
 # ============================================================
 
 if __name__ == "__main__":
-
     cfg = load_config()
-
     cfg.check_inputs(
         "functional_edges",
         "physical_edges",
