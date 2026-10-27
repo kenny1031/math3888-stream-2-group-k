@@ -18,7 +18,7 @@ int main(int argc, char** argv){
     cin >> n >> m;
     vector<vector<int>> adj(n);
 
-    for(int i = 0; i < m; ++i) {
+    for (int i = 0; i < m; ++i) {
         int u, v;
         cin >> u >> v;
         if(u == v) continue;
@@ -26,7 +26,7 @@ int main(int argc, char** argv){
         adj[v].push_back(u);
     }
 
-    for(auto& nbrs:adj)
+    for (auto& nbrs:adj)
         sort(nbrs.begin(), nbrs.end());
 
     int T = (argc > 1) ? atoi(argv[1]):4;
@@ -34,12 +34,18 @@ int main(int argc, char** argv){
     vector<vector<double>> threadB(T, vector<double>(n, 0.));
     vector<thread> workers;
 
-    for(int tid = 0; tid < T; tid++) workers.emplace_back([&,tid]() {
-        vector<int> dist(n, -1), head(n, -1), order(n), predV(2 * m + 1), nextPred(2 * m + 1);
+    for (int tid = 0; tid < T; tid++) workers.emplace_back([&,tid]() {
+        vector<int>
+            dist(n, -1),
+            head(n, -1),
+            order(n),
+            predV(2 * m + 1),
+            nextPred(2 * m + 1);
+
         vector<double> sigma(n), delta(n);
         auto& bet = threadB[tid];
 
-        for(int s = tid; s < n; s += T){
+        for (int s = tid; s < n; s += T) {
             fill(dist.begin(), dist.end(), -1);
             fill(head.begin(), head.end(), -1);
             fill(sigma.begin(), sigma.end(), 0.);
@@ -50,15 +56,15 @@ int main(int argc, char** argv){
             sigma[s] = 1.;
             order[last++] = s;
 
-            while(first < last){
+            while (first < last) {
                 int v = order[first++];
                 int want = dist[v] + 1;
-                for(int w:adj[v]){
-                    if(dist[w] < 0){
+                for (int w:adj[v]) {
+                    if (dist[w] < 0) {
                         dist[w] = want;
                         order[last++] = w;
                     }
-                    if(dist[w] == want){
+                    if (dist[w] == want) {
                         sigma[w] += sigma[v];
                         predV[edgesUsed] = v;
                         nextPred[edgesUsed] = head[w];
@@ -66,9 +72,9 @@ int main(int argc, char** argv){
                     }
                 }
             }
-            for(int i = last - 1; i >= 0; --i){
+            for (int i = last - 1; i >= 0; --i) {
                 int w = order[i];
-                for(int e = head[w]; e != -1; e = nextPred[e]){
+                for (int e = head[w]; e != -1; e = nextPred[e]) {
                     int v = predV[e];
                     delta[v] += (sigma[v] / sigma[w]) * (1. + delta[w]);
                 }
@@ -77,12 +83,12 @@ int main(int argc, char** argv){
         }
     });
 
-    for(auto& th:workers) th.join();
+    for (auto& th:workers) th.join();
     cout << setprecision(17);
     double scale = n > 2 ? 1. / double(n - 1) / double(n - 2):0.;
-    for(int v = 0; v < n; v++){
+    for (int v = 0; v < n; v++) {
         double b = 0.;
-        for(auto& part:threadB) b += part[v];
+        for (auto& part:threadB) b += part[v];
         cout << b * scale << '\n';
     }
 }
