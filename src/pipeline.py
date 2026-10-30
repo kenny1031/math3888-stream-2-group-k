@@ -17,10 +17,7 @@ from .config import ExperimentConfig, load_config
 from .network import build_networks
 from .algorithms import rank_percentile, community_membership_matrix
 from .cadtp import CADTPRanker
-from .evaluation import (
-    compare_go_baselines,
-    run_matched_go_comparison,
-)
+from .evaluation import compare_go_baselines, run_matched_go_comparison
 from .plotting import (
     plot_go_precision,
     plot_candidate_network,
@@ -144,10 +141,7 @@ def load_cadtp_inputs(cfg: ExperimentConfig):
     )
 
     # Node2Vec consensus from Notebook 04
-    n2v = pd.read_csv(
-        cfg.path("node2vec_consensus"),
-        index_col="string_id",
-    )
+    n2v = pd.read_csv(cfg.path("node2vec_consensus"), index_col="string_id")
 
     if "mean_rank" not in n2v.columns:
         raise ValueError("Node2Vec CSV must contain mean_rank.")
@@ -295,7 +289,6 @@ def run_validation(
     baseline: pd.DataFrame,
     train: pd.DataFrame | None = None,
 ):
-
     print("\n=== Held-out Validation ===")
 
     # Reuse training rankings when running --stage all.
@@ -312,7 +305,6 @@ def run_validation(
 
     # Run held-out Louvain ensemble
     ranker = CADTPRanker(cfg)
-
     valid = ranker.fit(
         G_full=G_full,
         G_hlj1=G_hlj1,
@@ -388,7 +380,6 @@ def run_validation(
     expected_matrix = np.array([[95, 0,   25],
                                 [0, 3773, 212],
                                 [2, 34,   298]])
-
     np.testing.assert_array_equal(
         confusion.to_numpy(),
         expected_matrix,
@@ -415,6 +406,7 @@ def run_validation(
             "overlap": len(train_pool & valid_pool),
             "jaccard": jaccard(train_pool, valid_pool),
         })
+
         for k in [10, 20, 50]:
             a = top_k_ids(train, track, k)
             b = top_k_ids(valid, track, k)
@@ -431,11 +423,9 @@ def run_validation(
     stability = pd.DataFrame(records)
 
     print("\nJaccard stability:")
-    print(
-        stability[
-            ["track", "metric", "k", "overlap", "jaccard"]
-        ].round(6).to_string(index=False)
-    )
+    print(stability[
+        ["track", "metric", "k", "overlap", "jaccard"]
+    ].round(6).to_string(index=False))
 
     # Regression checks for Top-20
     expected_top20 = {
@@ -653,15 +643,8 @@ def run_evaluation(cfg: ExperimentConfig):
         seed=cfg.evaluation["matched_randomisation"]["random_seed"],
     )
 
-    matched.to_csv(
-        output_dir / "go_matched_randomisation_refactor.csv",
-        index=False,
-    )
-
-    adjusted.to_csv(
-        output_dir / "go_matched_tests_adjusted_refactor.csv",
-        index=False,
-    )
+    matched.to_csv(output_dir / "go_matched_randomisation_refactor.csv", index=False)
+    adjusted.to_csv(output_dir / "go_matched_tests_adjusted_refactor.csv", index=False)
 
     print("\n=== Matched Randomisation Results ===")
 
@@ -743,7 +726,6 @@ def run_plotting(
 
     def protein_id(gene: str) -> str:
         """Resolve a gene name from actual ranking metadata."""
-
         if gene == "HLJ1":
             return target
 
@@ -763,16 +745,8 @@ def run_plotting(
     # B. GO baseline comparison figure
     # --------------------------------------------------------
 
-    go_comparison = pd.read_csv(
-        evaluation_dir
-        / "go_baseline_comparison_refactor.csv"
-    )
-
-    paths = plot_go_precision(
-        results=go_comparison,
-        output_dir=figure_dir,
-        k=20,
-    )
+    go_comparison = pd.read_csv(evaluation_dir / "go_baseline_comparison_refactor.csv")
+    paths = plot_go_precision(results=go_comparison, output_dir=figure_dir, k=20)
 
     print("\nGO Precision@20:")
     for path in paths:
@@ -831,25 +805,14 @@ def run_plotting(
     # --------------------------------------------------------
 
     threshold = cfg.network["confidence_threshold"]
-
     train_seeds = cfg.louvain["training_seeds"]
     val_seeds = cfg.louvain["validation_seeds"]
 
-    train_cache = (
-        evaluation_dir
-        / f"louvain_membership_training_{threshold}.csv.gz"
-    )
-
-    val_cache = (
-        evaluation_dir
-        / f"louvain_membership_validation_{threshold}.csv.gz"
-    )
+    train_cache = evaluation_dir / f"louvain_membership_training_{threshold}.csv.gz"
+    val_cache = evaluation_dir / f"louvain_membership_validation_{threshold}.csv.gz"
 
     # Compatibility with the earlier Step 9.3 cache
-    combined_cache = (
-        evaluation_dir
-        / f"louvain_membership_matrix_{threshold}.csv.gz"
-    )
+    combined_cache = evaluation_dir / f"louvain_membership_matrix_{threshold}.csv.gz"
 
     def read_membership(path):
         matrix = pd.read_csv(path, index_col="string_id")
@@ -867,7 +830,6 @@ def run_plotting(
             )
 
         validation = validation.reindex(training.index)
-
         membership = pd.concat([training, validation], axis=1)
 
     elif combined_cache.is_file():
@@ -882,9 +844,7 @@ def run_plotting(
     expected_seeds = set(train_seeds + val_seeds)
 
     if set(membership.columns) != expected_seeds:
-        raise ValueError(
-            "Cached Louvain seeds do not match config."
-        )
+        raise ValueError("Cached Louvain seeds do not match config.")
 
     # Verify the cached partitions against CADTP scores
     for group, seeds, filename in (
@@ -909,9 +869,7 @@ def run_plotting(
             index_col="string_id",
         )
 
-        actual_votes = membership.loc[
-            reference.index, seeds
-        ].sum(axis=1)
+        actual_votes = membership.loc[reference.index, seeds].sum(axis=1)
 
         if not np.array_equal(
             actual_votes.to_numpy(),
@@ -949,12 +907,7 @@ def run_plotting(
         validation_seeds=val_seeds,
         output_dir=figure_dir,
     )
-
-    summary.to_csv(
-        evaluation_dir
-        / "louvain_membership_selected.csv",
-        index=False,
-    )
+    summary.to_csv(evaluation_dir / "louvain_membership_selected.csv", index=False)
 
     print("\nLouvain Membership Heatmap:")
     for path in paths:

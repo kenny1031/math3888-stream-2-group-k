@@ -1,102 +1,63 @@
-# Group K - HLJ1 Protein Interaction Network Analysis
+# MATH3888 Group K — HLJ1 Protein Network Analysis
 
-This repository contains the Python code and Jupyter notebooks used for our MATH3888 group project, *Integrating Graph Theory and Representation Learning for HLJ1-Centred Protein Interaction Network Analysis*.
+Code accompanying *Integrating Graph Theory and Representation Learning for HLJ1-Centred Protein Interaction Network Analysis*.
 
-We analyse the *Saccharomyces cerevisiae* protein association network using Node2Vec, Random Walk with Restart, Louvain community detection, Markov Clustering (MCL), and in-silico deletion analysis. Candidate proteins are evaluated using Gene Ontology (GO) annotations and matched randomisation tests.
+The analysis uses STRING v12.0 yeast protein networks, random walks and Node2Vec, Louvain and Markov Clustering (MCL), HLJ1 in-silico deletion, and Gene Ontology (GO) evaluation. **Raw datasets are not stored in this repository.** This guide explains how to restore the inputs and run the code.
 
-This README provides instructions for reproducing the computational results presented in our report.
+## 1. Environment
 
-## 1. Requirements
-
-- Python 3.12 recommended
-- Git
-- Jupyter Notebook or JupyterLab
-- A C++ compiler for the standalone exact betweenness implementation, if required
-
-From the repository root, create and activate a virtual environment:
+Python **3.12** is recommended. From the repository root:
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
-
-pip install -r requirements.txt
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
 ```
 
-On Windows, activate the environment using `.venv\Scripts\activate` instead.
+If running optional notebooks, use your preferred Jupyter environment (install `jupyterlab` if it is not already in `requirements.txt`). Run commands below from the **repository root**.
 
-## 2. Required Datasets
+## 2. Download the raw data
 
-Raw datasets are not included in the GitHub repository and must be downloaded separately.
+### A. STRING v12.0 — required for preprocessing
 
-### 2.1 STRING v12.0
+Download from the [STRING v12.0 archived download page](https://version-12-0.string-db.org/cgi/download), selecting **Saccharomyces cerevisiae** (NCBI taxon **4932**). Download the **full** links files, not the smaller basic-links files, and retain the original filenames:
 
-Source: https://version-12-0.string-db.org/cgi/download
+| File | Data |
+| --- | --- |
+| `4932.protein.links.full.v12.0.txt.gz` | Functional protein associations |
+| `4932.protein.physical.links.full.v12.0.txt.gz` | Physical interaction associations |
+| `4932.protein.info.v12.0.txt.gz` | Protein names/metadata |
+| `4932.protein.aliases.v12.0.txt.gz` | Identifiers and aliases |
 
-Select:
+Place all four compressed files under `data/raw/string_v12_0/`. **Do not decompress these four `.gz` files.** The script reads them directly. Use **version 12.0** rather than the current default STRING release.
 
-- Organism: *Saccharomyces cerevisiae*
-- NCBI taxonomy ID: `4932`
-- STRING version: **12.0**
+### B. Gene Ontology — required for GO evaluation
 
-Download the following four files:
+Download:
 
-| File | Purpose |
-|---|---|
-| `4932.protein.links.full.v12.0.txt.gz` | Functional protein association network |
-| `4932.protein.physical.links.full.v12.0.txt.gz` | Physical interaction network |
-| `4932.protein.info.v12.0.txt.gz` | Protein names and descriptions |
-| `4932.protein.aliases.v12.0.txt.gz` | STRING ID to gene/ORF mapping |
+- [`YEAST-mod.gaf.gz`](https://current.geneontology.org/annotations/gaf/YEAST-mod.gaf.gz) — yeast gene annotations;
+- [`go-basic.obo`](https://purl.obolibrary.org/obo/go/go-basic.obo) — GO ontology.
 
-Use the original unfiltered files rather than applying a confidence threshold during download.
-
-Place all four files in:
-
-```text
-data/raw/string_v12_0/
-```
-
-The files can remain gzip-compressed (`.gz`).
-
-### 2.2 Gene Ontology (GO)
-
-Download the following files:
-
-| File | Download source |
-|---|---|
-| `YEAST-mod.gaf.gz` | https://current.geneontology.org/annotations/gaf/YEAST-mod.gaf.gz |
-| `go-basic.obo` | https://purl.obolibrary.org/obo/go/go-basic.obo |
-
-Place them in `data/raw/go/` and decompress the annotation file:
+Place both downloads in `data/raw/go/` and decompress the annotations to `YEAST-mod.gaf`:
 
 ```bash
 mkdir -p data/raw/go
-
 gzip -dk data/raw/go/YEAST-mod.gaf.gz
 ```
 
-The expected files are:
+The analysis expects `data/raw/go/YEAST-mod.gaf` and `data/raw/go/go-basic.obo`. GO annotations are updated over time; exact numerical reproduction requires the **same annotation release** used for the report.
 
-```text
-data/raw/go/
-├── YEAST-mod.gaf
-└── go-basic.obo
-```
+### C. Essential-protein reference — required for candidate filtering
 
-**Reproducibility note:** GO annotations and ontology files are periodically updated. Exact reproduction of the reported GO evaluation requires the same data releases used in the original analysis. Current downloads may produce slightly different results.
-
-### 2.3 Essential proteins
-
-The project also uses:
+Obtain the original course-provided `essential_proteins.csv` and save it as:
 
 ```text
 data/raw/essential_proteins.csv
 ```
 
-This is the yeast essential-protein reference dataset used for candidate eligibility filtering. Obtain the original dataset supplied for the project and place it at the path above. Preserve its original column structure.
+Keep the file's original structure. If this input is not distributed with the course submission, an accessible copy or source link must be supplied to the marker; it cannot be reconstructed from STRING alone.
 
-### 2.4 Expected raw-data structure
-
-After downloading, the directory should contain:
+### Expected input layout
 
 ```text
 data/
@@ -115,129 +76,77 @@ data/
         └── 4932.protein.physical.links.full.v12.0.txt.gz
 ```
 
-The metadata files are included in the repository.
+The two `data/metadata/` files are normally tracked in the repository. The preprocessing script creates an ERAD seed template and frozen design record if they are missing.
 
-## 3. Reproducing the Results
+## 3. Run the analysis
 
-Run all commands from the repository root.
-
-### Step 1: Data preparation
-
-Open Jupyter:
+**Step 1 — Prepare STRING data** (script equivalent of `notebooks/01_string_data_setup.ipynb`):
 
 ```bash
-jupyter lab
+python scripts/prepare_string_data.py
 ```
 
-Run the following notebook from top to bottom:
+This step:
 
-```text
-notebooks/01_string_data_setup.ipynb
-```
+1. validates the four STRING files and calculates their SHA-256 hashes;
+2. resolves STRING protein IDs to yeast ORF identifiers and locates HLJ1 (`YMR161W`);
+3. removes self-loops and combines reciprocal edges (checking for conflicting scores);
+4. generates summary statistics at STRING confidence thresholds **400, 700 and 900**;
+5. checks the ERAD seed table and frozen analysis design.
 
-This notebook prepares STRING data for subsequent network analysis.
-
-The processed data are stored under:
+Outputs:
 
 ```text
 data/processed/string_v12_0/
+├── functional_edges_score_ge_400.csv.gz
+├── physical_edges_score_ge_400.csv.gz
+├── string_id_to_orf.csv
+└── network_threshold_summary.csv
 ```
 
-The main report uses an undirected STRING functional-association network with a combined confidence-score threshold of 700.
+The main study uses the **functional network at combined score ≥ 700**; the score ≥ 400 edge tables allow threshold comparisons without downloading the data again.
 
-### Step 2: Main computational pipeline
+If the script reports **`Frozen design mismatch`**, the downloaded STRING files and/or ERAD seed table differ from the recorded experiment. Check the versions and input files first. To inspect outputs despite a mismatch, run `python scripts/prepare_string_data.py --allow-design-mismatch`. This **does not overwrite** the frozen design and does **not** establish exact reproduction.
 
-Run:
+**Step 2 — Run the main project pipeline:**
 
 ```bash
 bash scripts/run_pipeline.sh
 ```
 
-The core Python implementation is organised under `src/`, including:
+The implementation is in `src/` (`network.py`, `node2vec.py`, `algorithms.py`, `cadtp.py`, `go.py`, `evaluation.py`, `integration.py`, `plotting.py`, and `pipeline.py`), with parameters in `configs/default.yaml`.
 
-- `network.py` — Network construction
-- `algorithms.py` — Graph algorithms
-- `node2vec.py` — Weighted Node2Vec
-- `cadtp.py` — Candidate prioritisation
-- `go.py` and `evaluation.py` — GO-based evaluation
-- `integration.py` — Cross-method evidence integration
-- `plotting.py` — Result visualisation
-- `pipeline.py` — Pipeline implementation
+**Step 3 — Supplementary analyses:** The individual notebooks in `notebooks/` cover baseline network diagnostics, betweenness deletion and ERAD-guided screening. The repository also includes `scripts/recompute_deletion_700.py` and `scripts/brandes_exact.cpp` for deletion/betweenness computations. These may be needed for group-member-specific figures or outputs not included in the main pipeline; run them using their corresponding source files and prepared data.
 
-Configuration parameters are stored in:
+## 4. Outputs and reference results
 
-```text
-configs/default.yaml
-```
-
-### Step 3: Additional analyses
-
-Additional notebooks and scripts are provided for analyses developed by individual group members.
-
-| Notebook / script | Analysis |
-|---|---|
-| `02_baseline_network_structure_and_candidate_features.ipynb` | Baseline network properties and candidate features |
-| `Betweenness deletion comparison.ipynb` | Betweenness comparison before and after HLJ1 deletion |
-| `Alex Project Week 8.ipynb` | Additional deletion analysis |
-| `jadon_hlj1_full_analysis_v12.ipynb` | ERAD-guided screening and candidate analysis |
-| `scripts/recompute_deletion_700.py` | Deletion betweenness recomputation |
-| `scripts/brandes_exact.cpp` | C++ implementation of exact betweenness |
-
-These provide the additional computational analyses used in the integrated results. They can be run separately where required, using the prepared data and relevant intermediate outputs.
-
-## 4. Output Files
-
-Generated results are organised under `outputs/`.
+Results are organised as follows:
 
 | Directory | Contents |
-|---|---|
-| `outputs/rankings/` | Node2Vec and CADTP candidate rankings |
-| `outputs/evaluation/` | GO evaluation, matched randomisation and community stability |
-| `outputs/integrated/` | Combined evidence across network methods |
-| `outputs/figures/` | Figures included in the report |
+| --- | --- |
+| `outputs/rankings/` | Node2Vec and CADTP rankings |
+| `outputs/evaluation/` | GO precision, matched randomisations and Louvain stability |
+| `outputs/integrated/` | Cross-method candidate evidence |
+| `outputs/figures/` | Figures presented in the report |
 | `outputs/models/node2vec/` | Trained Node2Vec models |
-| `outputs/alex/` | Deletion betweenness analysis |
-| `outputs/jadon/` | ERAD-guided analysis |
-| `outputs/junxi/` | MCL results |
+| `outputs/alex/`, `outputs/jadon/`, `outputs/junxi/` | Supplementary group-member analyses |
 
-Key report figures include:
+Selected values reported in the final report (STRING v12.0; functional layer, score ≥ 700):
 
-```text
-outputs/figures/
-├── cross_method_evidence_heatmap.pdf
-├── go_precision_at_20.pdf
-├── community_resolution_sensitivity.pdf
-└── louvain_heldout_membership_heatmap.pdf
-```
-
-## 5. Reference Results
-
-The reported analysis uses a confidence threshold of 700.
-
-| Quantity | Reported result |
-|---|---|
-| Network vertices | 6,600 |
-| Network edges | 104,188 |
-| HLJ1 component vertices | 5,716 |
-| HLJ1 component edges | 104,138 |
+| Metric | Reference value |
+| --- | ---: |
+| Total network nodes / edges | 6,600 / 104,188 |
+| HLJ1 component nodes / edges | 5,716 / 104,138 |
 | Eligible candidate proteins | 4,439 |
 | Node2Vec Cross-track GO Precision@20 | 55% |
 | Node2Vec Cross-track matched fold enrichment | 1.84 |
-| Node2Vec Cross-track BH-adjusted q-value | 0.012 |
+| Node2Vec Cross-track BH-adjusted `q` | 0.012 |
 | Held-out Louvain track agreement | 93.85% |
 
-Fixed random seeds are used in the relevant experiments. Small numerical differences may arise from software versions, stochastic computation or updated annotation datasets.
+Differences may arise if GO files, seeds, packages or input data differ. The source code is provided for reproducibility checks; the analysis produces network-based *candidate hypotheses*, not confirmed biological compensation following HLJ1 deletion.
 
-## 6. Tests
-
-Unit tests are located in `tests/` and can be run using:
+## 5. Tests
 
 ```bash
 python -m pytest -q
 ```
-
-## 7. Notes
-
-- The analysis uses **STRING v12.0**, not the latest STRING release.
-- Raw datasets are excluded from GitHub. Intermediate files, trained models and generated figures can be regenerated or inspected as applicable.
-- Reproduction of exact GO statistics requires the original annotation versions.
