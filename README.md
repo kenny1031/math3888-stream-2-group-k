@@ -1,241 +1,243 @@
-# MATH3888 PPI Project
-This repo contains MATH3888 Stream 2 Group K's resources and code.
+# Group K - HLJ1 Protein Interaction Network Analysis
 
-We mainly use Python (Jupyter Notebook) with:
-* NetworkX
-* NumPy
-* SciPy
-* pandas
-* Matplotlib
+This repository contains the Python code and Jupyter notebooks used for our MATH3888 group project, *Integrating Graph Theory and Representation Learning for HLJ1-Centred Protein Interaction Network Analysis*.
 
-Protein interaction data mainly come from [STRING-DB](https://string-db.org).
+We analyse the *Saccharomyces cerevisiae* protein association network using Node2Vec, Random Walk with Restart, Louvain community detection, Markov Clustering (MCL), and in-silico deletion analysis. Candidate proteins are evaluated using Gene Ontology (GO) annotations and matched randomisation tests.
 
-## 1. First-time setup
-You only need to do this ONCE.
+This README provides instructions for reproducing the computational results presented in our report.
 
-### Step 1: Install Python
-Install **Python 3.12** to your local device if you do not already have it. 
+## 1. Requirements
 
-Check your Python version by typing in your terminal:
+- Python 3.12 recommended
+- Git
+- Jupyter Notebook or JupyterLab
+- A C++ compiler for the standalone exact betweenness implementation, if required
+
+From the repository root, create and activate a virtual environment:
+
 ```bash
-python3 --version
-```
-
-You should see something like:
-```text
-Python 3.12.x
-```
-
-### Step 2: Clone the repository
-In your terminal, run:
-```bash
-git clone https://github.com/kenny1031/math3888-stream-2-group-k
-```
-
-Then move into the project folder:
-```bash
-cd math3888-stream-2-group-k
-```
-
-### Step 3: Create a virtual environment
-A virtual environment keeps the packages required separate from the rest of your local device.
-
-Run:
-```bash
-python -m venv .venv
-```
-
-Activate it.
-
-macOS / Linux
-```bash
+python3 -m venv .venv
 source .venv/bin/activate
-```
 
-Windows
-```
-.venv\Scripts\activate
-```
-
-When it is activated, you should see something like `(.venv)` at the beginning of your terminal line.
-
-### Step 4: Install the required packages
-With the virtual environment activated:
-```bash
-python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-This installs all packages needed for this project (I already written up `requirements.txt`)
+On Windows, activate the environment using `.venv\Scripts\activate` instead.
 
-### Step 5: Start Jupyter
+## 2. Required Datasets
+
+Raw datasets are not included in the GitHub repository and must be downloaded separately.
+
+### 2.1 STRING v12.0
+
+Source: https://version-12-0.string-db.org/cgi/download
+
+Select:
+
+- Organism: *Saccharomyces cerevisiae*
+- NCBI taxonomy ID: `4932`
+- STRING version: **12.0**
+
+Download the following four files:
+
+| File | Purpose |
+|---|---|
+| `4932.protein.links.full.v12.0.txt.gz` | Functional protein association network |
+| `4932.protein.physical.links.full.v12.0.txt.gz` | Physical interaction network |
+| `4932.protein.info.v12.0.txt.gz` | Protein names and descriptions |
+| `4932.protein.aliases.v12.0.txt.gz` | STRING ID to gene/ORF mapping |
+
+Use the original unfiltered files rather than applying a confidence threshold during download.
+
+Place all four files in:
+
+```text
+data/raw/string_v12_0/
+```
+
+The files can remain gzip-compressed (`.gz`).
+
+### 2.2 Gene Ontology (GO)
+
+Download the following files:
+
+| File | Download source |
+|---|---|
+| `YEAST-mod.gaf.gz` | https://current.geneontology.org/annotations/gaf/YEAST-mod.gaf.gz |
+| `go-basic.obo` | https://purl.obolibrary.org/obo/go/go-basic.obo |
+
+Place them in `data/raw/go/` and decompress the annotation file:
+
+```bash
+mkdir -p data/raw/go
+
+gzip -dk data/raw/go/YEAST-mod.gaf.gz
+```
+
+The expected files are:
+
+```text
+data/raw/go/
+├── YEAST-mod.gaf
+└── go-basic.obo
+```
+
+**Reproducibility note:** GO annotations and ontology files are periodically updated. Exact reproduction of the reported GO evaluation requires the same data releases used in the original analysis. Current downloads may produce slightly different results.
+
+### 2.3 Essential proteins
+
+The project also uses:
+
+```text
+data/raw/essential_proteins.csv
+```
+
+This is the yeast essential-protein reference dataset used for candidate eligibility filtering. Obtain the original dataset supplied for the project and place it at the path above. Preserve its original column structure.
+
+### 2.4 Expected raw-data structure
+
+After downloading, the directory should contain:
+
+```text
+data/
+├── metadata/
+│   ├── erad_seeds.csv
+│   └── string_analysis_design_v12_0.json
+└── raw/
+    ├── essential_proteins.csv
+    ├── go/
+    │   ├── YEAST-mod.gaf
+    │   └── go-basic.obo
+    └── string_v12_0/
+        ├── 4932.protein.aliases.v12.0.txt.gz
+        ├── 4932.protein.info.v12.0.txt.gz
+        ├── 4932.protein.links.full.v12.0.txt.gz
+        └── 4932.protein.physical.links.full.v12.0.txt.gz
+```
+
+The metadata files are included in the repository.
+
+## 3. Reproducing the Results
+
+Run all commands from the repository root.
+
+### Step 1: Data preparation
+
+Open Jupyter:
+
+```bash
+jupyter lab
+```
+
+Run the following notebook from top to bottom:
+
+```text
+notebooks/01_string_data_setup.ipynb
+```
+
+This notebook prepares STRING data for subsequent network analysis.
+
+The processed data are stored under:
+
+```text
+data/processed/string_v12_0/
+```
+
+The main report uses an undirected STRING functional-association network with a combined confidence-score threshold of 700.
+
+### Step 2: Main computational pipeline
+
 Run:
-```bash
-jupyter lab
-```
-A browser window should open automatically. Most of our work will be inside the `notebooks/` folder.
 
-## 2. Every time you work on the project
-Open Terminal and go to the repository:
 ```bash
-cd math3888-stream-2-group-k
+bash scripts/run_pipeline.sh
 ```
 
-Activate environment:
+The core Python implementation is organised under `src/`, including:
 
-**macOS / Linux**
-```bash
-source .venv/bin/activate
-```
+- `network.py` — Network construction
+- `algorithms.py` — Graph algorithms
+- `node2vec.py` — Weighted Node2Vec
+- `cadtp.py` — Candidate prioritisation
+- `go.py` and `evaluation.py` — GO-based evaluation
+- `integration.py` — Cross-method evidence integration
+- `plotting.py` — Result visualisation
+- `pipeline.py` — Pipeline implementation
 
-**Windows**
+Configuration parameters are stored in:
+
 ```text
-.venv\Scripts\activate
+configs/default.yaml
 ```
 
-Before changing anything, download the latest version from GitHub:
-```bash
-git pull
-```
+### Step 3: Additional analyses
 
-Then start Jupyter"
-```bash
-jupyter lab
-```
+Additional notebooks and scripts are provided for analyses developed by individual group members.
 
-## 3. Repo structure
+| Notebook / script | Analysis |
+|---|---|
+| `02_baseline_network_structure_and_candidate_features.ipynb` | Baseline network properties and candidate features |
+| `Betweenness deletion comparison.ipynb` | Betweenness comparison before and after HLJ1 deletion |
+| `Alex Project Week 8.ipynb` | Additional deletion analysis |
+| `jadon_hlj1_full_analysis_v12.ipynb` | ERAD-guided screening and candidate analysis |
+| `scripts/recompute_deletion_700.py` | Deletion betweenness recomputation |
+| `scripts/brandes_exact.cpp` | C++ implementation of exact betweenness |
+
+These provide the additional computational analyses used in the integrated results. They can be run separately where required, using the prepared data and relevant intermediate outputs.
+
+## 4. Output Files
+
+Generated results are organised under `outputs/`.
+
+| Directory | Contents |
+|---|---|
+| `outputs/rankings/` | Node2Vec and CADTP candidate rankings |
+| `outputs/evaluation/` | GO evaluation, matched randomisation and community stability |
+| `outputs/integrated/` | Combined evidence across network methods |
+| `outputs/figures/` | Figures included in the report |
+| `outputs/models/node2vec/` | Trained Node2Vec models |
+| `outputs/alex/` | Deletion betweenness analysis |
+| `outputs/jadon/` | ERAD-guided analysis |
+| `outputs/junxi/` | MCL results |
+
+Key report figures include:
+
 ```text
-.
-├── data/
-│   ├── raw/              # Original data downloaded from STRING
-│   └── processed/        # Cleaned / processed data
-│
-├── notebooks/            # Jupyter notebooks
-│
-├── src/                  # Reusable Python functions
-│
-├── figures/              # Generated figures
-│
-├── outputs/              # Generated results
-│
-├── requirements.txt      # Required Python packages
-├── .gitignore
-└── README.md
+outputs/figures/
+├── cross_method_evidence_heatmap.pdf
+├── go_precision_at_20.pdf
+├── community_resolution_sensitivity.pdf
+└── louvain_heldout_membership_heatmap.pdf
 ```
 
-In general:
-* use `notebooks/` for analysis, experiments, explanations and plots;
-* use `src/` for Python functions that we want to reuse;
-* DO NOT manually modify `.venv/`;
-* large downloaded datasets should usually stay inside `data/` and should NOT be uploaded to GitHub.
+## 5. Reference Results
 
-## 4. Basic Git workflow
-Before starting work:
+The reported analysis uses a confidence threshold of 700.
+
+| Quantity | Reported result |
+|---|---|
+| Network vertices | 6,600 |
+| Network edges | 104,188 |
+| HLJ1 component vertices | 5,716 |
+| HLJ1 component edges | 104,138 |
+| Eligible candidate proteins | 4,439 |
+| Node2Vec Cross-track GO Precision@20 | 55% |
+| Node2Vec Cross-track matched fold enrichment | 1.84 |
+| Node2Vec Cross-track BH-adjusted q-value | 0.012 |
+| Held-out Louvain track agreement | 93.85% |
+
+Fixed random seeds are used in the relevant experiments. Small numerical differences may arise from software versions, stochastic computation or updated annotation datasets.
+
+## 6. Tests
+
+Unit tests are located in `tests/` and can be run using:
+
 ```bash
-git pull
+python -m pytest -q
 ```
 
-After making changes, check what you changed:
-```bash
-git status
-```
+## 7. Notes
 
-Add your changes:
-```bash
-git add .
-```
-
-Create a commit:
-```bash
-git commit -m "brief description of your changes"
-```
-E.g.
-```bash
-git commit -m "add PPI network construction"
-```
-Then upload your changes:
-```bash
-git push
-```
-
-A typical workflow is therefore:
-```bash
-git pull
-
-# do your work
-
-git add .
-git commit -m "changes description"
-git push
-```
-
-## 5. Important GitHub rules
-### Always `git pull` before starting work
-Someone else may have changed the repo since you last worked on it.
-
-### Do not edit the same notebook at the same time
-Jupyter notebooks can be difficult to merge when two people change the same notebook simultaneously.
-
-### Do not upload `.venv`
-It contains your local Python environment and should never be committed. It is already excluded by `.gitignore`.
-
-### Do not upload large raw datasets unless we agree to
-
-STRING datasets may be large. Instead, we should record:
-* where the data came from;
-* how it was downloaded;
-* which version / organism was used;
-* how it was processed.
-
-### Use meaningful commit messages
-Good:
-```text
-add shortest path function
-filter STRING interactions above threshold 750
-plot degree distribution
-fix essential protein lookup
-```
-
-Not very useful:
-```text
-update
-stuff
-changes
-final
-final2
-```
-
-## 6. If you install a new Python package
-E.g.
-```bash
-pip install seaborn
-```
-
-If the package becomes necessary for the project, also add it to `requirements.txt`. This ensures everyone else can install the same dependencies.
-
-## 7. Common problems
-### `command not found: python`
-Try `python3` instead of `python`.
-
-### A Python package cannot be found
-Make sure the virtual environment is activated:
-```bash
-source .venv/bin/activate
-```
-Then run:
-```bash
-pip install -r requirements.txt
-```
-again.
-
-### Git says there is a merge conflict
-Do not randomly delete files or force-push.
-
-Send the error message to the group first so we can figure it out together.
-
-### Jupyter cannot find the packages
-Make sure Jupyter was started after activating `.venv`:
-```bash
-source .venv/bin/activate
-jupyter lab
-```
+- The analysis uses **STRING v12.0**, not the latest STRING release.
+- Raw datasets are excluded from GitHub. Intermediate files, trained models and generated figures can be regenerated or inspected as applicable.
+- Reproduction of exact GO statistics requires the original annotation versions.
