@@ -17,6 +17,7 @@ import csv
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -103,13 +104,38 @@ def read_graph(edges_csv):
     return comp,names
 
 
-def exact_betweenness(graph, nodes, cpp_file, workers):
-    cc=shutil.which('c++') or shutil.which('g++') or shutil.which('clang++')
+def compile_brandes(cpp_file, exe):
+    """Compile normally, recovering missing Apple libc++ headers via the SDK."""
+    cc = shutil.which('c++') or shutil.which('g++') or shutil.which('clang++')
     if cc is None:
         raise RuntimeError('C++ compiler not found. Install Xcode Command Line Tools (macOS).')
+    command = [cc, '-O3', '-std=c++17', '-pthread', str(cpp_file), '-o', str(exe)]
+    result = subprocess.run(command, text=True, capture_output=True)
+    if result.returncode == 0:
+        return
+
+    # Some Apple CLT installations omit the compiler-relative libc++ headers,
+    # while the selected SDK still supplies them. Do not retry unrelated errors.
+    if sys.platform == 'darwin' and "'algorithm' file not found" in result.stderr:
+        xcrun = shutil.which('xcrun')
+        if xcrun:
+            sdk = subprocess.run([xcrun, '--show-sdk-path'], text=True, capture_output=True)
+            headers = Path(sdk.stdout.strip()) / 'usr/include/c++/v1'
+            if sdk.returncode == 0 and (headers / 'algorithm').is_file():
+                print(f'Retrying C++ compilation with SDK headers: {headers}', flush=True)
+                retry = subprocess.run(
+                    command + ['-isystem', str(headers)], text=True, capture_output=True,
+                )
+                if retry.returncode == 0:
+                    return
+                result = retry
+    raise RuntimeError(f'Brandes C++ compilation failed:\n{result.stderr}')
+
+
+def exact_betweenness(graph, nodes, cpp_file, workers):
     with tempfile.TemporaryDirectory() as tmp:
         exe=Path(tmp)/'brandes_exact'
-        subprocess.run([cc,'-O3','-std=c++17','-pthread',str(cpp_file),'-o',str(exe)],check=True)
+        compile_brandes(cpp_file, exe)
         mapping={v:i for i,v in enumerate(nodes)}
         network=f'{len(nodes)} {graph.number_of_edges()}\n'+''.join(
             f'{mapping[u]} {mapping[v]}\n' for u,v in graph.edges())
@@ -162,7 +188,14 @@ def read_original_evidence(integrated_path):
     with integrated_path.open(newline='') as f:
         rd=csv.DictReader(f); fields=rd.fieldnames or []
         rows=list(rd)
-    assert len(rows)==4439 and len({r['string_id'] for r in rows})==4439
+    if 'string_id' not in fields:
+        raise ValueError(f'Integrated evidence {integrated_path} is empty or missing string_id; '
+                         'restore the original 4,439-candidate evidence CSV.')
+    unique_ids = {r['string_id'] for r in rows}
+    if len(rows) != 4439 or len(unique_ids) != 4439 or '' in unique_ids:
+        raise ValueError(f'Integrated evidence {integrated_path}: expected 4,439 rows with '
+                         f'unique nonempty STRING IDs, got {len(rows):,} rows and '
+                         f'{len(unique_ids):,} distinct IDs.')
     renamed=[]
     for row in rows:
         row_new={}
@@ -189,12 +222,13 @@ def main():
         if not path.is_file():
             raise FileNotFoundError(path)
 
+    # Validate merge inputs before spending time computing exact betweenness.
+    fields, rows = read_original_evidence(args.integrated)
     graph, names = read_graph(args.edges)
     metrics = compute_metrics(graph, names, cpp_file, args.workers)
     standalone_fields = ['string_id', 'orf', 'gene'] + METRIC_COLS
     write_rows(args.output / 'deletion_betweenness_700.csv', standalone_fields, metrics)
     metric_map = {r['string_id'] : r for r in metrics}
-    fields, rows = read_original_evidence(args.integrated)
     missing = [row['string_id'] for row in rows if row['string_id'] not in metric_map]
 
     if missing:

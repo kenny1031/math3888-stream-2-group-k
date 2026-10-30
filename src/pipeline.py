@@ -320,6 +320,7 @@ def run_validation(
         group="validation",
     )
 
+    assert train.index.is_unique and valid.index.is_unique
     assert len(train) == len(valid) == 4439
     assert set(train.index) == set(valid.index)
 
@@ -338,6 +339,16 @@ def run_validation(
     # --------------------------------------------------------
 
     valid_aligned = valid.reindex(train.index)
+
+    # Held-out Louvain seeds change community features, not Node2Vec or RWR.
+    # Reject stale training files rather than blessing mixed-input stability.
+    np.testing.assert_allclose(
+        train[["N", "R"]].to_numpy(),
+        valid_aligned[["N", "R"]].to_numpy(),
+        rtol=0,
+        atol=1e-12,
+        err_msg="Training/validation inputs differ; rerun --stage cadtp first.",
+    )
 
     comparison = pd.DataFrame(
         {
@@ -427,17 +438,22 @@ def run_validation(
         ["track", "metric", "k", "overlap", "jaccard"]
     ].round(6).to_string(index=False))
 
-    # Regression checks for Top-20
+    # Default refactor Node2Vec input, training seeds 3888–3897 and
+    # held-out seeds 3898–3907: Boundary includes IBA57 in both top-20s.
     expected_top20 = {
         "Local": 19,
         "Cross": 20,
-        "Boundary": 15,
+        "Boundary": 16,
     }
 
     for track, expected in expected_top20.items():
         a = top_k_ids(train, track, 20)
         b = top_k_ids(valid, track, 20)
-        assert len(a & b) == expected
+        actual = len(a & b)
+        assert actual == expected, (
+            f"{track} top-20 overlap: expected {expected}, got {actual}; "
+            f"train-only={sorted(a - b)}, validation-only={sorted(b - a)}"
+        )
 
     # --------------------------------------------------------
     # D. Save outputs

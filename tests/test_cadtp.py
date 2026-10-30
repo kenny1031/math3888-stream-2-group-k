@@ -180,7 +180,7 @@ def test_top20_jaccard(results):
     expected_overlaps = {
         "Local": 19,
         "Cross": 20,
-        "Boundary": 15,
+        "Boundary": 16,
     }
 
     for track, expected in expected_overlaps.items():
@@ -206,9 +206,9 @@ def test_top20_jaccard(results):
 
 def test_key_candidates(results):
     train = results["train"]
-    local_top3 = (
+    local_top4 = (
         train.loc[train["track"].eq("Local")]
-        .nsmallest(3, "rank_within_track")
+        .nsmallest(4, "rank_within_track")
         ["preferred_name"]
         .tolist()
     )
@@ -220,5 +220,13 @@ def test_key_candidates(results):
         .tolist()
     )
 
-    assert local_top3 == ["SSE1", "APJ1", "JJJ2"]
+    assert local_top4 == ["SSE1", "APJ1", "ERJ5", "JJJ2"]
     assert cross_top3 == ["SSM4", "UFD2", "FES1"]
+
+def test_shared_ranking_inputs(results):
+    """Only community features may change between Louvain seed groups."""
+    train = results["train"]
+    valid = results["validation"].reindex(train.index)
+    np.testing.assert_allclose(
+        train[["N", "R"]], valid[["N", "R"]], rtol=0, atol=1e-12,
+    )

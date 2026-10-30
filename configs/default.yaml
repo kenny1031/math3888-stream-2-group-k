@@ -1,8 +1,18 @@
-
 # ============================================================
-# MATH3888 — HLJ1 Protein Network Analysis
-# Default Experiment Configuration
+# MATH3888 Group K — Default Experiment Configuration
 # ============================================================
+# Run all commands from the repository root.
+#
+# Preprocessing (run first):
+#   python scripts/prepare_string_data.py
+#
+# Main analysis:
+#   bash scripts/run_pipeline.sh
+#
+# NOTE: prepare_string_data.py uses the fixed STRING v12.0 raw
+# filenames under data/raw/string_v12_0/ and does NOT read this
+# YAML. This configuration applies to the downstream pipeline.
+# See README.md for required raw downloads and folder layout.
 
 project:
   name: "MATH3888 HLJ1 Protein Network Analysis"
@@ -11,49 +21,55 @@ project:
   target_gene: "HLJ1"
 
 # ------------------------------------------------------------
-# 1. Data paths
+# 1. Input and output paths (relative to repository root)
 # ------------------------------------------------------------
-
 paths:
+  # Produced by scripts/prepare_string_data.py
   functional_edges: "data/processed/string_v12_0/functional_edges_score_ge_400.csv.gz"
   physical_edges: "data/processed/string_v12_0/physical_edges_score_ge_400.csv.gz"
   protein_mapping: "data/processed/string_v12_0/string_id_to_orf.csv"
+
+  # Required reference files (provided/downloaded separately)
   essential_proteins: "data/raw/essential_proteins.csv"
   erad_seeds: "data/metadata/erad_seeds.csv"
 
-  go_annotations: "data/raw/go/YEAST-mod.gaf.gz"
+  # README instructs decompressing YEAST-mod.gaf.gz to YEAST-mod.gaf.
+  # To read the .gz directly instead, both this path and the GO
+  # file-loading code must support the compressed format.
+  go_annotations: "data/raw/go/YEAST-mod.gaf"
   go_ontology: "data/raw/go/go-basic.obo"
 
+  # Main pipeline outputs
   models: "outputs/models"
   rankings: "outputs/rankings"
   evaluation: "outputs/evaluation"
+  integrated: "outputs/integrated"
   figures: "outputs/figures"
 
+  # Optional notebook result: available only after running notebook 02.
   baseline_features: "outputs/notebook_02/protein_baseline_features_functional_700.csv"
-  node2vec_consensus: "outputs/notebook_04/node2vec_consensus_unbiased.csv"
+
+  # Aligned with the existing output tree (not the old notebook_04 path).
+  node2vec_consensus: "outputs/rankings/node2vec_consensus_unbiased_refactor.csv"
 
 # ------------------------------------------------------------
 # 2. Network construction
 # ------------------------------------------------------------
-
 network:
   string_version: "12.0"
-
   confidence_threshold: 700
   confidence_divisor: 1000.0
   weight_attribute: "confidence"
-
   directed: false
   analysis_component: "target_connected_component"
 
-  # Node2Vec and RWR use the HLJ1 component.
-  # Louvain uses the full functional graph.
+  # Node2Vec and RWR use HLJ1's connected component.
+  # Louvain uses the full functional-association graph.
   community_graph: "full_functional"
 
 # ------------------------------------------------------------
 # 3. Candidate eligibility
 # ------------------------------------------------------------
-
 candidates:
   exclude_essential: true
   require_orf: true
@@ -73,30 +89,23 @@ candidates:
 # ------------------------------------------------------------
 # 4. Node2Vec
 # ------------------------------------------------------------
-
 node2vec:
   dimensions: 64
-
   walk_length: 40
   walks_per_node: 5
-
   p: 1.0
   q: 1.0
-
   window_size: 5
   negative_samples: 5
   epochs: 5
-
   use_edge_weights: true
   training_seeds: [3888, 3889, 3890]
-
   similarity: "cosine"
   consensus_method: "mean_rank"
 
 # ------------------------------------------------------------
 # 5. Random Walk with Restart
 # ------------------------------------------------------------
-
 rwr:
   alpha: 0.85
   personalization: "target"
@@ -105,45 +114,19 @@ rwr:
 # ------------------------------------------------------------
 # 6. Louvain community detection
 # ------------------------------------------------------------
-
 louvain:
   resolution: 1.0
   weight: "confidence"
-
-  training_seeds:
-    - 3888
-    - 3889
-    - 3890
-    - 3891
-    - 3892
-    - 3893
-    - 3894
-    - 3895
-    - 3896
-    - 3897
-
-  validation_seeds:
-    - 3898
-    - 3899
-    - 3900
-    - 3901
-    - 3902
-    - 3903
-    - 3904
-    - 3905
-    - 3906
-    - 3907
+  training_seeds: [3888, 3889, 3890, 3891, 3892, 3893, 3894, 3895, 3896, 3897]
+  validation_seeds: [3898, 3899, 3900, 3901, 3902, 3903, 3904, 3905, 3906, 3907]
 
 # ------------------------------------------------------------
-# 7. CADTP — Our proposed algorithm
+# 7. CADTP — proposed prioritisation algorithm
 # ------------------------------------------------------------
-
 cadtp:
   local_threshold: 0.8
   cross_threshold: 0.2
-
   affinity_smoothing: 5.0
-
   community_affinity: "mean_raw_then_percentile"
   score_normalization: "rank_percentile"
 
@@ -151,11 +134,9 @@ cadtp:
     node2vec: 1.0
     rwr: 1.0
     community: 1.0
-
   cross_weights:
     node2vec: 1.0
     rwr: 1.0
-
   boundary_weights:
     node2vec: 1.0
     rwr: 1.0
@@ -165,7 +146,6 @@ cadtp:
 # ------------------------------------------------------------
 # 8. Evaluation
 # ------------------------------------------------------------
-
 evaluation:
   top_k: [10, 20, 50, 100]
 
@@ -177,7 +157,6 @@ evaluation:
     exclude_evidence: ["IEA", "ND"]
     exclude_not_annotations: true
     ontology_relations: ["is_a"]
-
     categories:
       protein_folding: "GO:0006457"
       erad: "GO:0036503"
@@ -187,10 +166,8 @@ evaluation:
   matched_randomisation:
     n_permutations: 2000
     random_seed: 3888
-
     degree_bins: [5, 20, 60]
     max_distance_bin: 4
-
     match_features:
       - "degree"
       - "distance"
@@ -203,7 +180,6 @@ evaluation:
 # ------------------------------------------------------------
 # 9. Visualisation
 # ------------------------------------------------------------
-
 visualisation:
   dpi: 300
   formats: ["png", "pdf"]

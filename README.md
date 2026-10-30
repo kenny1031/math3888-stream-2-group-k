@@ -80,7 +80,7 @@ The two `data/metadata/` files are normally tracked in the repository. The prepr
 
 ## 3. Run the analysis
 
-**Step 1 — Prepare STRING data** (script equivalent of `notebooks/01_string_data_setup.ipynb`):
+**Step 1 — Prepare STRING data**:
 
 ```bash
 python scripts/prepare_string_data.py
