@@ -15,19 +15,13 @@
 
 set -euo pipefail
 
-# ------------------------------------------------------------
-# 1. Resolve repository root
-# ------------------------------------------------------------
-
+# Resolve repository root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
-# ------------------------------------------------------------
-# 2. Select Python interpreter
-# ------------------------------------------------------------
-
+# Select Python interpreter
 if [[ -n "${PYTHON_BIN:-}" ]]; then
     PYTHON="${PYTHON_BIN}"
 elif [[ -x "${PROJECT_ROOT}/.venv/bin/python" ]]; then
@@ -39,10 +33,7 @@ else
     exit 1
 fi
 
-# ------------------------------------------------------------
-# 3. Parse stage
-# ------------------------------------------------------------
-
+# Parse stage
 STAGE="${1:-}"
 
 if [[ -z "${STAGE}" ]]; then
@@ -61,10 +52,7 @@ fi
 
 shift
 
-# ------------------------------------------------------------
-# 4. Run
-# ------------------------------------------------------------
-
+# Run
 export PYTHONHASHSEED=0
 export MPLBACKEND=Agg
 
@@ -75,21 +63,17 @@ echo "Python: ${PYTHON}"
 echo "=============================================="
 
 case "${STAGE}" in
-
     network|cadtp|validate|evaluate|plot|all)
         "${PYTHON}" -m src.pipeline \
             --stage "${STAGE}" "$@"
         ;;
-
     test)
         "${PYTHON}" -m pytest tests/ -q "$@"
         ;;
-
     *)
         echo "Error: Unknown stage '${STAGE}'"
         exit 1
         ;;
-
 esac
 
 echo ""
